@@ -28,14 +28,71 @@ class SimpleHttpClient
         if (!$failToken)
             $failToken = new FailToken;
 
-        return $this->request("GET", $this->url, $params, null, $failToken);
+        return $this->request(
+            "GET",
+            $this->url,
+            $params,
+            null,
+            null,
+            $failToken
+        );
     }
 
     /**
      * @param string|array $params
      */
-    public function request(string $method = "GET", string $url, $params = null, $data = null, FailToken $failToken)
+    public function post($params = null, $data = null, $contentType = "json", FailToken $failToken = null)
     {
+        if (!$failToken)
+            $failToken = new FailToken;
+
+        $headers = [];
+        $body = null;
+
+        if ($data) {
+            if (is_array($data)) {
+                switch ($contentType) {
+                    case "json":
+                        array_push($headers, "Content-Type: application/json");
+                        $body = json_encode($data);
+                        break;
+
+                    default:
+                        $body = $data;
+                }
+            } else {
+                switch ($contentType) {
+                    case "json":
+                        array_push($headers, "Content-Type: application/json");
+                        $body = $data;
+                        break;
+
+                    default:
+                }
+            }
+        }
+
+        return $this->request(
+            "POST",
+            $this->url,
+            $params,
+            $body,
+            $headers,
+            $failToken
+        );
+    }
+
+    /**
+     * @param string|array $params
+     */
+    public function request(
+        string $method = "GET",
+        string $url,
+        $params = null,
+        $data = null,
+        $headers = null,
+        FailToken $failToken
+    ) {
         if ($url === "")
             throw new Exception("Url cannot be empty.");
 
@@ -45,19 +102,21 @@ class SimpleHttpClient
         if (!filter_var($url, FILTER_VALIDATE_URL))
             throw new Exception("Url is invalid.");
 
-        $handler = curl_init();
-        curl_setopt($handler, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($handler, CURLOPT_URL, $this->buildWithParams($url, $params));
+        $handle = curl_init();
+        curl_setopt($handle, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($handle, CURLOPT_URL, $this->buildWithParams($url, $params));
+        curl_setopt($handle, CURLOPT_HEADER, $headers);
+        curl_setopt($handle, CURLOPT_POSTFIELDS, $data); 
 
-        $response = curl_exec($handler);
+        $response = curl_exec($handle);
 
         try {
             if (!$response) {
-                $failToken->fail(curl_error($handler), curl_errno($handler));
+                $failToken->fail(curl_error($handle), curl_errno($handle));
             }
 
-            $httpCode = curl_getinfo($handler, CURLINFO_RESPONSE_CODE);
-            $contentType = curl_getinfo($handler, CURLINFO_CONTENT_TYPE);
+            $httpCode = curl_getinfo($handle, CURLINFO_RESPONSE_CODE);
+            $contentType = curl_getinfo($handle, CURLINFO_CONTENT_TYPE);
 
             return new SimpleHttpResponse(
                 $httpCode,
@@ -65,7 +124,7 @@ class SimpleHttpClient
                 $this->content($response, $contentType)
             );
         } finally {
-            curl_close($handler);
+            curl_close($handle);
         }
     }
 
