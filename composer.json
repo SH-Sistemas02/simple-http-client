@@ -1,0 +1,8 @@
+{
+    "name": "sugarhouse/simple-http-client",
+    "autoload": {
+        "psr-4": {
+            "Simple\\": "src/"
+        }
+    }
+}
