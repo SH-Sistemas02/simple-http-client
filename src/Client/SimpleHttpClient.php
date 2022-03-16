@@ -86,7 +86,7 @@ class SimpleHttpClient
      * @param string|array $params
      */
     public function request(
-        string $method = "GET",
+        string $method,
         string $url,
         $params = null,
         $data = null,
